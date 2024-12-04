@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from model import ReviewTable, UserTable, StoreTable
 from db import session
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import uvicorn
 
 main = FastAPI()
 
@@ -44,3 +46,6 @@ async def read_store_name(store_id: str, db: Session = Depends(get_db)):
 
 #플러스 버튼 클릭 시 데이터베이스 상 수량 증가
 #마이너스 버튼 클릭 시 데이터베이스 상 수량 감소
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
