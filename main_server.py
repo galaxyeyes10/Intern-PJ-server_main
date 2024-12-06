@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from sqlalchemy.orm import Session
 from model import ReviewTable, UserTable, StoreTable
 from db import session
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 import os
 import uvicorn
 
@@ -16,12 +17,23 @@ main.add_middleware(
     allow_headers=["*"],
 )
 
+main.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+
 def get_db():
     db = session()
     try:
         yield db
     finally:
         db.close()
+
+#로그인 상태 확인
+@main.get("/check_login/")
+async def check_login(request: Request):
+    # 세션에서 사용자 정보 확인
+    if "user_id" not in request.session:
+        return False
+    
+    return {"message": f"Logged in as {request.session['username']}"}
 
 #유저 아이디로 닉네임 반환
 @main.get("/username/{user_id}")
