@@ -26,14 +26,14 @@ def get_db():
     finally:
         db.close()
 
-#로그인 상태 확인
+#로그인 상태 확인, 로그인 중인 유저 아이디 반환
 @main.get("/check_login/")
 async def check_login(request: Request):
     # 세션에서 사용자 정보 확인
     if "user_id" not in request.session:
         return False
     
-    return {"message": f"Logged in as {request.session['username']}"}
+    return {"user_id": f"{request.session['user_id']}"}
 
 # 로그아웃 처리
 @main.post("/logout/")
@@ -62,6 +62,13 @@ async def read_store_name(store_id: str, db: Session = Depends(get_db)):
     store = db.query(StoreTable).filter(StoreTable.store_id == store_id).first()
 
     return store.store_name
+
+#is_completed가 false인 order들의 order_id를 리스트로 반환
+@main.get("/order/active_order_ids/{user_id}")
+async def get_active_order_ids(user_id: str, db: Session = Depends(get_db)):
+    order_ids = db.query(OrderTable.order_id).filter(OrderTable.user_id == user_id, OrderTable.is_completed == False).all()
+    
+    return {"order_ids": [order_id[0] for order_id in order_ids]}
 
 #마이너스 버튼 클릭 시 데이터베이스 상 수량 감소
 @main.put("/order/decrease/{order_id}")
