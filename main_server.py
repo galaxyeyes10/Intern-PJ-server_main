@@ -72,7 +72,7 @@ async def get_active_order_ids(user_id: str, db: Session = Depends(get_db)):
 
 #마이너스 버튼 클릭 시 데이터베이스 상 수량 감소
 @main.post("/order/decrease/{order_id}")
-async def decrease_order_quantity(order_id: int = Body(...), db: Session = Depends(get_db)):
+async def decrease_order_quantity(order_id: int, db: Session = Depends(get_db)):
     order = db.query(OrderTable).filter(OrderTable.order_id == order_id, OrderTable.is_completed == False).first()
     
     if order:
