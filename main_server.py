@@ -17,7 +17,7 @@ main.add_middleware(
     allow_headers=["*"],
 )
 
-REDIS_URL = os.getenv("REDIS_URL", "rediss://red-ctcfbq2j1k6c73ffbtsg:aiCsugG9iVFLJigWeRWjKU9DcY4Pxk60@oregon-redis.render.com:6379")
+REDIS_URL = os.getenv("REDIS_URL", "redis://red-ctcfbq2j1k6c73ffbtsg:6379")
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 
 def get_db():
@@ -38,7 +38,7 @@ async def check_login(request: Request):
     # Redis에서 세션 데이터 가져오기
     session_data = await redis.get(session_id)
     if not session_data:
-        raise {"success": False}
+        raise HTTPException(status_code=400, detail="Invalid session_id")
 
     return {"success": True, "session_id": session_id, "session_data": session_data}
 
@@ -54,6 +54,11 @@ async def logout(request: Request, response: Response):
     result = await redis.delete(session_id)
     if result == 0:
         raise HTTPException(status_code=400, detail="Invalid session_id")
+
+    # 쿠키에서 세션 ID 삭제
+    response.delete_cookie("session_id")
+
+    return {"success": True, "message": "Logged out successfully"}
 
 #유저 아이디로 닉네임 반환
 @main.get("/username/{user_id}")
