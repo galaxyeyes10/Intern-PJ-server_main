@@ -4,6 +4,7 @@ from model import ReviewTable, UserTable, StoreTable, OrderTable
 from db import session
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
+from pydantic import BaseModel
 import os
 import uvicorn
 
@@ -19,6 +20,9 @@ main.add_middleware(
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://red-ctcfbq2j1k6c73ffbtsg:6379")
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
+
+class UserInfo(BaseModel):
+    order_id: int
 
 def get_db():
     db = session()
@@ -88,10 +92,10 @@ async def get_active_order_ids(user_id: str, db: Session = Depends(get_db)):
     
     return {"order_ids": [order_id[0] for order_id in order_ids]}
 
-#마이너스 버튼 클릭 시 데이터베이스 상 수량 감소
-@main.post("/order/decrease/")
-async def decrease_order_quantity(order_id: int = Body(...), db: Session = Depends(get_db)):
-    order = db.query(OrderTable).filter(OrderTable.order_id == order_id, OrderTable.is_completed == False).first()
+#장바구니 -버튼 처리
+@main.put("/order/decrease/")
+async def decrease_order_quantity(request: UserInfo, db: Session = Depends(get_db)):
+    order = db.query(OrderTable).filter(OrderTable.order_id == request.order_id, OrderTable.is_completed == False).first()
     
     if order:
         order.quantity -= 1
