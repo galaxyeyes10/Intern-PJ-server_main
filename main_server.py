@@ -17,7 +17,7 @@ main.add_middleware(
     allow_headers=["*"],
 )
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://red-ctcfbq2j1k6c73ffbtsg:6379")
+REDIS_URL = os.getenv("REDIS_URL", "rediss://red-ctcfbq2j1k6c73ffbtsg:aiCsugG9iVFLJigWeRWjKU9DcY4Pxk60@oregon-redis.render.com:6379")
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 
 def get_db():
