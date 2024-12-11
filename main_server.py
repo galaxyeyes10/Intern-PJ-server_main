@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, Request, Body
+from fastapi import FastAPI, Depends, Body, Request, Response, HTTPException
 from sqlalchemy.orm import Session
 from model import ReviewTable, UserTable, StoreTable, OrderTable
 from db import session
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
+from redis.asyncio import Redis
 import os
 import uvicorn
 
@@ -17,7 +17,7 @@ main.add_middleware(
     allow_headers=["*"],
 )
 
-main.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+redis = Redis(host="localhost", port=6379, decode_responses=True)
 
 def get_db():
     db = session()
@@ -26,21 +26,33 @@ def get_db():
     finally:
         db.close()
 
-#로그인 상태 확인, 로그인 중인 유저 아이디 반환
+# 로그인 상태 확인
 @main.get("/check_login/")
 async def check_login(request: Request):
-    # 세션에서 사용자 정보 확인
-    if "user_id" not in request.session:
-        return False
-    
-    return {"user_id": f"{request.session['user_id']}"}
+    # 쿠키에서 세션 ID 가져오기
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=401, detail="No session found")
+
+    # Redis에서 세션 데이터 가져오기
+    session_data = await redis.get(session_id)
+    if not session_data:
+        raise {"success": False}
+
+    return {"success": True, "session_id": session_id, "session_data": session_data}
 
 # 로그아웃 처리
 @main.post("/logout/")
-async def logout(request: Request):
-    # 세션에서 사용자 정보 삭제
-    request.session.clear()
-    return {"message": "Logged out successfully"}
+async def logout(request: Request, response: Response):
+    # 쿠키에서 세션 ID 가져오기
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="No session found")
+
+    # Redis에서 세션 삭제
+    result = await redis.delete(session_id)
+    if result == 0:
+        raise HTTPException(status_code=400, detail="Invalid session_id")
 
 #유저 아이디로 닉네임 반환
 @main.get("/username/{user_id}")
@@ -71,8 +83,8 @@ async def get_active_order_ids(user_id: str, db: Session = Depends(get_db)):
     return {"order_ids": [order_id[0] for order_id in order_ids]}
 
 #마이너스 버튼 클릭 시 데이터베이스 상 수량 감소
-@main.post("/order/decrease/{order_id}")
-async def decrease_order_quantity(order_id: int, db: Session = Depends(get_db)):
+@main.post("/order/decrease/")
+async def decrease_order_quantity(order_id: int = Body(...), db: Session = Depends(get_db)):
     order = db.query(OrderTable).filter(OrderTable.order_id == order_id, OrderTable.is_completed == False).first()
     
     if order:
