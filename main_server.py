@@ -92,6 +92,20 @@ async def get_active_order_ids(user_id: str, db: Session = Depends(get_db)):
     
     return {"order_ids": [order_id[0] for order_id in order_ids]}
 
+# 총 수량 반환
+@main.get("/total_count/{user_id}")
+async def read_total_count(user_id: str, db: Session = Depends(get_db)):
+    orders = db.query(
+                        OrderTable.quantity,
+                        OrderTable.is_completed,
+                        UserTable.user_id
+                    ).join(UserTable, UserTable.user_id == OrderTable.user_id).filter(OrderTable.user_id == user_id, OrderTable.is_completed == False).all()
+    
+    counts = [row[0] for row in orders] 
+    total = sum(counts)
+    
+    return total
+
 #장바구니 -버튼 처리
 @main.put("/order/decrease/")
 async def decrease_order_quantity(request: UserInfo, db: Session = Depends(get_db)):
